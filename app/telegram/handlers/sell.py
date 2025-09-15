@@ -198,7 +198,7 @@ async def confirm_sell(call: types.CallbackQuery, state: FSMContext):
             f"Quantity: {grams}g\n"
             f"Price per gram: ${price_per_gram:.2f}\n"
             f"Total price: ${total_price:.2f}\n"
-            f"Order ID: {txn['uuid']}"
+            f"Order ID: {txn['uuid'][:8]}"
         )
         await call.message.edit_text(msg)
 

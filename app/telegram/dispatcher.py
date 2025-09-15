@@ -8,12 +8,18 @@ from app.telegram.handlers.closed_positions import router as closed_positions_ro
 from app.telegram.handlers.open_positions import router as open_positions_router
 from app.telegram.handlers.transactions import router as transactions_router
 from app.telegram.handlers.wallet import router as wallet_router
+from app.utils.common import InactivityMiddleware
 
 
 storage = MemoryStorage() 
 
 def setup_dispatcher() -> Dispatcher:
     dp = Dispatcher(storage=storage)
+
+    # # Register inactivity timeout middleware globally
+    # dp.message.middleware(InactivityMiddleware())
+    # dp.callback_query.middleware(InactivityMiddleware())
+
     dp.include_router(buy_router)     # Register FSM handler first
     dp.include_router(sell_router)   # Register generic router after
     dp.include_router(price_router)

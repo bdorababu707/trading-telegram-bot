@@ -72,7 +72,6 @@ class RegistrationStates(StatesGroup):
 MAX_PHONE_ATTEMPTS = 3
 
 @router.message()
-@inactivity_timeout_guard()
 async def handle_message(message: Message, state: FSMContext):
     user = await UserService.get_user_by_telegram_id(message.from_user.id)
 
@@ -128,7 +127,7 @@ async def handle_message(message: Message, state: FSMContext):
         return
 
     # If not waiting for phone, prompt user to send phone number
-    await message.answer("Welcome! Please send your mobile number with country code to register.")
+    await message.answer("Welcome! Please send your mobile number with country code to register (eg: +1234567890).")
     await state.set_state(RegistrationStates.waiting_for_phone)
 
 async def process_user_command(message: Message):

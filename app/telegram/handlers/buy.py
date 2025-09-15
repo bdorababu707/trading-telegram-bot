@@ -8,7 +8,7 @@ from app.services.price.price_service import get_current_price
 from app.services.wallet.wallet_service import WalletService
 from app.services.telegram.telegram_service import TelegramService
 from app.services.user.user_service import UserService
-from app.utils.common import check_retry_limit, inactivity_timeout_guard
+from app.utils.common import check_retry_limit, inactivity_timeout_guard, validate_fsm_data_decorator
 from app.utils.logging import get_logger, setup_logging
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -66,7 +66,6 @@ async def buy_start(msg: types.Message, state: FSMContext):
 #         reply_markup=price_selection_keyboard(current_price)
 #     )
 
-@inactivity_timeout_guard()
 @router.message(BuyFlow.waiting_grams)
 async def process_grams(msg: types.Message, state: FSMContext):
     try:
@@ -96,7 +95,6 @@ async def process_grams(msg: types.Message, state: FSMContext):
         reply_markup=price_selection_keyboard(current_price)
     )
 
-@inactivity_timeout_guard()
 @router.callback_query(F.data == "buy:current_price")
 async def buy_current_price(call: types.CallbackQuery, state: FSMContext):
     logger.info(f"User {call.from_user.id} selected BUY at current price")
@@ -117,7 +115,6 @@ async def buy_current_price(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(BuyFlow.waiting_confirmation)
     await call.answer()
 
-@inactivity_timeout_guard()
 @router.callback_query(F.data.in_(["confirm:BUY_EXECUTE", "confirm:BUY_PENDING"]))
 async def confirm_buy(call: types.CallbackQuery, state: FSMContext):
     telegram_id = call.from_user.id
@@ -176,7 +173,7 @@ async def confirm_buy(call: types.CallbackQuery, state: FSMContext):
                     f"Quantity: {grams}g\n"
                     f"Price per gram: ${current_price:.2f}\n"
                     f"Total price: ${total_price:.2f}\n"
-                    f"Order ID: {txn['uuid']}"
+                    f"Order ID: {txn['uuid'][:5]}"
                 )
             else:
                 txn = await BuyService.create_buy_order_for_linked_user(telegram_id, grams, custom_price=target_price)

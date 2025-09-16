@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 class WalletService:
 
     @staticmethod
-    async def create_wallet_for_user(user_id: str, currency: str = "AED") -> dict:
+    async def create_wallet_for_user(user_id: str) -> dict:
 
         try:
             logger.info(f"Creating wallet for user with id : {str(user_id)}")
@@ -25,7 +25,7 @@ class WalletService:
             wallet = Wallet(
                 uuid=await generate_uuid(),
                 user_id=user_id,
-                currency=currency,
+                currency="USD",
                 created_at=now,
                 updated_at=now,
             )

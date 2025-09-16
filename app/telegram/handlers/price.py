@@ -17,5 +17,5 @@ async def live_price(msg: types.Message):
     if price <= 0:
         await msg.answer("⚠️ Current gold price is temporarily unavailable. Please try again shortly.")
     else:
-        await msg.answer(f"📊 Current Gold Price: ₹{price:.2f} per gram")
+        await msg.answer(f"📊 Current Gold Price: ${price:.2f} per gram")
 

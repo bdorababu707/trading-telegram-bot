@@ -8,7 +8,7 @@ from app.services.price.price_service import get_current_price
 from app.services.wallet.wallet_service import WalletService
 from app.services.telegram.telegram_service import TelegramService
 from app.services.user.user_service import UserService
-from app.utils.common import check_retry_limit, inactivity_timeout_guard, validate_fsm_data_decorator
+from app.utils.common import check_retry_limit, validate_fsm_data_decorator
 from app.utils.logging import get_logger, setup_logging
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -91,7 +91,7 @@ async def process_grams(msg: types.Message, state: FSMContext):
     current_price = await get_current_price()
     await state.update_data(grams=grams, current_price=current_price)
     await msg.answer(
-        f"Current price per gram: ${current_price:.2f}",
+        f"Current price per gram: ${current_price:.2f}\n\n⚠️ This action is valid for 10 seconds.",
         reply_markup=price_selection_keyboard(current_price)
     )
 
@@ -101,7 +101,8 @@ async def buy_current_price(call: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     grams = data.get("grams")
     current_price = data.get("current_price")
-    total_price = grams * current_price
+
+    total_price = grams * current_price  
 
     await state.update_data(price=current_price, total_price=total_price, target_price=None)
 
@@ -109,7 +110,8 @@ async def buy_current_price(call: types.CallbackQuery, state: FSMContext):
         f"Confirm buy order:\n"
         f"Quantity: {grams}g\n"
         f"Price per gram: ${current_price:.2f}\n"
-        f"Total price: ${total_price:.2f}",
+        f"Total price: ${total_price:.2f}\n"
+        f"⚠️ This action is valid for 10 seconds.",
         reply_markup=confirm_inline("BUY_EXECUTE")
     )
     await state.set_state(BuyFlow.waiting_confirmation)
@@ -124,7 +126,7 @@ async def confirm_buy(call: types.CallbackQuery, state: FSMContext):
         grams = data.get("grams")
         target_price = data.get("target_price")
         current_price = data.get("current_price")
-
+        
         # Step 1: Check user-link
         try:
             user = await TelegramService.get_link_for_telegram(telegram_id)

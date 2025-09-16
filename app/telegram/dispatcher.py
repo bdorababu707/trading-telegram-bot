@@ -17,8 +17,8 @@ def setup_dispatcher() -> Dispatcher:
     dp = Dispatcher(storage=storage)
 
     # # Register inactivity timeout middleware globally
-    # dp.message.middleware(InactivityMiddleware())
-    # dp.callback_query.middleware(InactivityMiddleware())
+    dp.message.middleware(InactivityMiddleware())
+    dp.callback_query.middleware(InactivityMiddleware())
 
     dp.include_router(buy_router)     # Register FSM handler first
     dp.include_router(sell_router)   # Register generic router after

@@ -28,6 +28,48 @@ class ClosePositionStates(StatesGroup):
     waiting_selection = State()
     waiting_confirmation = State()
 
+# @router.message(lambda m: (m.text or "").strip().lower() == "open positions")
+# async def positions_list(message: types.Message, state: FSMContext):
+#     if not await UserService.ensure_user_approved(message):
+#         return
+#     logger.info(f"[positions_list] User {message.from_user.id} requested open positions")
+#     user = await TelegramService.get_link_for_telegram(message.from_user.id)
+#     if not user:
+#         await message.answer("⚠️ User not found. Please contact support.")
+#         return
+
+#     user_uuid = user.get("uuid")
+#     positions = await MongoHelper.find_many(
+#         collection="transactions",
+#         query={"user_id": user_uuid, "status": "OPEN"},
+#         projection={
+#             "uuid": 1,
+#             "buy_at": 1,
+#             "buy_grams": 1,
+#             "buy_price": 1,
+#             "sell_at": 1,
+#             "sell_grams": 1,
+#             "sell_price": 1,
+#         }
+#     )
+
+#     if not positions:
+#         await message.answer("You have no open positions currently.")
+#         return
+
+#     lines = ["🔓 Your Open Positions:"]
+#     for i, pos in enumerate(positions, start=1):
+#         if pos.get("buy_price", 0) > 0:
+#             lines.append(f"{i}. BUY {pos.get('buy_grams', 0)}g @ ${pos.get('buy_price', 0):.2f} (ID:{pos.get('uuid')[:8]})")
+#         elif pos.get("sell_price", 0) > 0:
+#             lines.append(f"{i}. SELL {pos.get('sell_grams', 0)}g @ ${pos.get('sell_price', 0):.2f} (ID:{pos.get('uuid')[:8]})")
+#         else:
+#             lines.append(f"{i}. Position ID: {pos.get('uuid')[:8]} (Unknown type)")
+
+#     await message.answer("\n".join(lines) + "\n\nSend the number of the position you want to close (e.g., 1) or send 0 to cancel:")
+#     await state.update_data(positions=positions)
+#     await state.set_state(ClosePositionStates.waiting_selection)
+
 @router.message(lambda m: (m.text or "").strip().lower() == "open positions")
 async def positions_list(message: types.Message, state: FSMContext):
     if not await UserService.ensure_user_approved(message):
@@ -57,14 +99,30 @@ async def positions_list(message: types.Message, state: FSMContext):
         await message.answer("You have no open positions currently.")
         return
 
-    lines = ["🔓 Your Open Positions:"]
+    try:
+        current_price = await get_current_price()
+    except Exception as e:
+        logger.error(f"[positions_list] Failed to fetch current price: {e}")
+        await message.answer("⚠️ Failed to get current price. Please try again later.")
+        return
+
+    lines = ["🔓 Your Open Positions (with Real-Time PnL):\n"]
     for i, pos in enumerate(positions, start=1):
-        if pos.get("buy_price", 0) > 0:
-            lines.append(f"{i}. BUY {pos.get('buy_grams', 0)}g @ ${pos.get('buy_price', 0):.2f} (ID:{pos.get('uuid')[:8]})")
-        elif pos.get("sell_price", 0) > 0:
-            lines.append(f"{i}. SELL {pos.get('sell_grams', 0)}g @ ${pos.get('sell_price', 0):.2f} (ID:{pos.get('uuid')[:8]})")
+        is_buy = pos.get("buy_price", 0) > 0
+        buy_grams = pos.get("buy_grams", 0)
+        buy_price = pos.get("buy_price", 0)
+        sell_grams = pos.get("sell_grams", 0)
+        sell_price = pos.get("sell_price", 0)
+
+        pnl = 0
+        if is_buy:
+            pnl = (current_price * buy_grams) - (buy_price * buy_grams)
+            desc = f"BUY {buy_grams}g @ ${buy_price:.2f}"
         else:
-            lines.append(f"{i}. Position ID: {pos.get('uuid')[:8]} (Unknown type)")
+            pnl = (sell_price * sell_grams) - (current_price * sell_grams)
+            desc = f"SELL {sell_grams}g @ ${sell_price:.2f}"
+
+        lines.append(f"{i}. {desc} | PnL: ${pnl:.2f} (ID:{pos.get('uuid')[:8]}) \n")
 
     await message.answer("\n".join(lines) + "\n\nSend the number of the position you want to close (e.g., 1) or send 0 to cancel:")
     await state.update_data(positions=positions)
@@ -144,7 +202,8 @@ async def position_selection(message: types.Message, state: FSMContext):
         f"Confirm closing this position:\n\n"
         f"{position_desc}\n"
         f"Closing at current price: ${current_price:.2f}\n"
-        f"Estimated PnL: ${pnl:.2f}\n\n"
+        f"Estimated PnL: ${pnl:.2f}\n"
+        f"⚠️ This action is valid for 10 seconds.\n\n"
         "Reply with '1' to confirm or '0' to cancel."
     )
     await message.answer(confirm_text)

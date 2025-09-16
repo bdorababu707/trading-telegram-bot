@@ -57,7 +57,6 @@ from aiogram.fsm.state import StatesGroup, State
 from app.services.user.user_service import UserService
 from app.services.wallet.wallet_service import WalletService
 from app.telegram.keyboards import MAIN_MENU
-from app.utils.common import inactivity_timeout_guard
 from app.utils.logging import get_logger
 import re
 
@@ -107,6 +106,20 @@ async def handle_message(message: Message, state: FSMContext):
             )
             return
 
+        # PHONE NUMBER DUPLICATION CHECK 
+        existing_user = await UserService.get_user_by_phone_number(phone)
+        if existing_user:
+            wrong_attempts += 1
+            await state.update_data(wrong_phone_attempts=wrong_attempts)
+            await message.answer(
+                f"This mobile number is already registered. Please enter a different one. (Attempt {wrong_attempts}/{MAX_PHONE_ATTEMPTS})"
+            )
+            if wrong_attempts >= MAX_PHONE_ATTEMPTS:
+                await message.answer("❌ Too many invalid attempts. Session expired. Please send /start or hi to try again.")
+                await state.clear()
+            return
+
+        # if phone is valid and not duplicate, continue with registration
         # Reset attempt counter (valid input)
         await state.update_data(wrong_phone_attempts=0)
 

@@ -6,7 +6,7 @@ from aiogram.fsm.state import StatesGroup, State
 from app.services.transaction.transaction_service import TransactionService
 from app.services.user.user_service import UserService
 from app.telegram.keyboards import confirm_inline
-from app.utils.common import check_retry_limit
+from app.utils.common import check_retry_limit, validate_fsm_data_decorator
 from app.utils.logging import get_logger, setup_logging
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from app.services.wallet.wallet_service import WalletService
@@ -87,10 +87,9 @@ async def process_grams(msg: types.Message, state: FSMContext):
     current_price = await get_current_price()
     await state.update_data(grams=grams, current_price=current_price)
     await msg.answer(
-        f"Current price per gram: ${current_price:.2f}",
+        f"Current price per gram: ${current_price:.2f}\n\n⚠️ This action is valid for 10 seconds.",
         reply_markup=price_selection_keyboard(current_price)
     )
-
 
 @router.callback_query(F.data == "sell:current_price")
 async def sell_current_price(call: types.CallbackQuery, state: FSMContext):
@@ -105,7 +104,8 @@ async def sell_current_price(call: types.CallbackQuery, state: FSMContext):
         f"Confirm sell order:\n"
         f"Quantity: {grams}g\n"
         f"Price per gram: ${current_price:.2f}\n"
-        f"Total price: ${total_price:.2f}",
+        f"Total price: ${total_price:.2f}\n",
+        f"⚠️ This action is valid for 10 seconds.",
         reply_markup=confirm_inline("SELL_EXECUTE")
     )
     await state.set_state(SellFlow.waiting_confirmation)
